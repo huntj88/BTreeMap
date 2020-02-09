@@ -28,6 +28,10 @@ class BTreeMap<Key : Comparable<Key>, Value> {
             return key.compareTo(other.key)
         }
     }
+
+    override fun toString(): String {
+        return rootNode.toString()
+    }
 }
 
 const val numEntriesInNode = 2
@@ -60,7 +64,7 @@ class Node<Key : Comparable<Key>, Value> {
                     }
                     is LocationOfValue.Child -> {
                         val childNode = children[location.index]!!
-                        return when(val putResponse = childNode.put(entry)) {
+                        return when (val putResponse = childNode.put(entry)) {
                             is PutResponse.Success -> putResponse
                             is PutResponse.NodeFull -> {
                                 insertPromoted(putResponse)
@@ -93,34 +97,67 @@ class Node<Key : Comparable<Key>, Value> {
             }
         }
 
-        (entries.indices).forEach {
-            entries[it] = null
-        }
-
         return PutResponse.NodeFull(middle!!, left, right)
     }
 
     fun insertPromoted(putResponse: PutResponse.NodeFull<Key, Value>): PutResponse<Key, Value> {
-        val isFull = entries.indexOfFirst { it == null } == -1
+        fun isFull() = (entries.indexOfFirst { it == null } == -1)
 
-        if(isFull) {
+        if (isFull()) {
             // this node is also full, propagate up to parent
-            TODO("todo, not enough room in this node")
+
+            val valuesToRemove = arrayOf(putResponse.promoted as Entry<Key, Value>?) +
+                    putResponse.left.entries +
+                    putResponse.right.entries
+
+            entries.forEachIndexed { index, entry ->
+                if(entry!! in valuesToRemove) {
+                    entries[index] = null
+                }
+            }
+
+            return when(isFull()) {
+                true -> {
+                    val newLeftNode = Node<Key, Value>().also {
+                        it.entries[0] = entries[0]
+                        it.children[0] = children[0]
+                        it.children[1] = putResponse.left
+                    }
+
+                    val newRightNode = Node<Key, Value>().also {
+                        it.entries[0] = entries[1]
+                        it.children[0] = putResponse.right
+                        it.children[1] = children[2]
+                    }
+
+                    entries[0] = putResponse.promoted
+                    entries[1] = null
+                    children[0] = newLeftNode
+                    children[1] = newRightNode
+                    children[2] = null
+
+                    PutResponse.Success
+                }
+                false -> putInNodeWithEmptySpace(putResponse.promoted, putResponse.left, putResponse.right)
+            }
+
+//            TODO("todo, not enough room in this node")
         }
 
-        assert(!isFull)
+        assert(!isFull())
 
         val indexOfWhereToGo = entries.indexOfFirst {
             it == null || it.key > putResponse.promoted.key
         }
 
-        return when(indexOfWhereToGo) {
+        return when (indexOfWhereToGo) {
             -1 -> {
                 // not found so put it at the end
                 entries[entries.lastIndex] = putResponse.promoted
                 children[entries.lastIndex] = putResponse.left
                 children[entries.lastIndex + 1] = putResponse.right
                 PutResponse.Success
+                TODO("just want to review what state looks like here")
             }
             else -> putInNodeWithEmptySpace(putResponse.promoted, putResponse.left, putResponse.right)
         }
@@ -131,6 +168,19 @@ class Node<Key : Comparable<Key>, Value> {
         left: Node<Key, Value>?,
         right: Node<Key, Value>?
     ): PutResponse<Key, Value> {
+
+        fun getIndexOfSpotForPut(newEntry: Entry<Key, Value>): Int {
+            assert(entries.last() == null)
+            entries.forEachIndexed { index, keyValue ->
+                when {
+                    keyValue == null -> return index
+                    keyValue.key == newEntry.key -> return index
+                    keyValue.key > newEntry.key -> return index
+                }
+            }
+
+            throw IllegalStateException("should never get here")
+        }
 
         val index = getIndexOfSpotForPut(newEntry)
         val existingEntry = entries[index]
@@ -162,19 +212,6 @@ class Node<Key : Comparable<Key>, Value> {
         }
     }
 
-    fun getIndexOfSpotForPut(newEntry: Entry<Key, Value>): Int {
-        assert(entries.last() == null)
-        entries.forEachIndexed { index, keyValue ->
-            when {
-                keyValue == null -> return index
-                keyValue.key == newEntry.key -> return index
-                keyValue.key > newEntry.key -> return index
-            }
-        }
-
-        throw IllegalStateException("should never get here")
-    }
-
     private fun hasChildren(): Boolean {
         this.children.forEach {
             if (it != null) return true
@@ -196,7 +233,7 @@ class Node<Key : Comparable<Key>, Value> {
 
     sealed class PutResponse<out Key, out Value> {
         object Success : PutResponse<Nothing, Nothing>()
-        data class NodeFull<Key: Comparable<Key>, Value>(
+        data class NodeFull<Key : Comparable<Key>, Value>(
             val promoted: Entry<Key, Value>,
             val left: Node<Key, Value>,
             val right: Node<Key, Value>
@@ -206,5 +243,9 @@ class Node<Key : Comparable<Key>, Value> {
     sealed class LocationOfValue {
         data class Value(val index: Int) : LocationOfValue()
         data class Child(val index: Int) : LocationOfValue()
+    }
+
+    override fun toString(): String {
+        return "\nValues: " + entries.joinToString() + " Children: [" + children.joinToString() + "]"
     }
 }
