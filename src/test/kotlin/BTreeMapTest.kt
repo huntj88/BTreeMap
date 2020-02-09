@@ -5,16 +5,16 @@ class BTreeMapTest {
     @Test
     fun get() {
         BTreeMap<Int, Int>().apply {
-            put(1, 1)
             put(2, 2)
-            put(3, 3)
-            put(4, 4)
-            put(5, 5)
-            put(6, 6)
-            put(7, 7)
             put(8, 8)
+            put(6, 6)
+            put(1, 1)
+            put(5, 5)
+            put(4, 4)
             put(9, 9)
+            put(3, 3)
             put(10, 10)
+            put(7, 7)
 
             println(get(1))
             println(get(2))

@@ -15,17 +15,7 @@ class BTreeMap<Key : Comparable<Key>, Value> {
 
             }
             is Node.PutResponse.NodeFull<Key, Value> -> {
-//                TODO("put promoted in correct spot in entries, and put children in correct spot")
-//
-
-                // todo: only provide values that make it append to end for now
-                val firstOpenSpot = rootNode.entries.indexOfFirst { it == null }
-                assert(firstOpenSpot != -1) // todo
-
-                // todo: put in correct spot
-                rootNode.entries[firstOpenSpot] = putResponse.promoted
-                rootNode.children[firstOpenSpot] = putResponse.left
-                rootNode.children[firstOpenSpot + 1] = putResponse.right
+                rootNode.insertPromoted(putResponse)
             }
         }
     }
@@ -58,9 +48,9 @@ class Node<Key : Comparable<Key>, Value> {
         val hasChildren = hasChildren()
 
         return when {
-            !hasChildren && entries.last() == null -> putInLeafWithEmptySpace(entry)
+            !hasChildren && entries.last() == null -> putInNodeWithEmptySpace(entry, null, null)
             !hasChildren && entries.last() != null -> {
-                splitAndPromote(entry)
+                splitAndPromoteLeaf(entry)
             }
             hasChildren -> {
                 when (val location = getLocationOfValue(entry.key)) {
@@ -73,16 +63,7 @@ class Node<Key : Comparable<Key>, Value> {
                         return when(val putResponse = childNode.put(entry)) {
                             is PutResponse.Success -> putResponse
                             is PutResponse.NodeFull -> {
-                                val firstOpenSpot = entries.indexOfFirst { it == null }
-                                assert(firstOpenSpot != -1) // todo, not enough room in this node
-
-
-                                // todo: put in correct spot
-                                entries[firstOpenSpot] = putResponse.promoted
-                                children[firstOpenSpot] = putResponse.left
-                                children[firstOpenSpot + 1] = putResponse.right
-
-                                PutResponse.Success
+                                insertPromoted(putResponse)
                             }
                         }
                     }
@@ -94,7 +75,7 @@ class Node<Key : Comparable<Key>, Value> {
         }
     }
 
-    fun splitAndPromote(additionalEntry: Entry<Key, Value>): PutResponse.NodeFull<Key, Value> {
+    fun splitAndPromoteLeaf(additionalEntry: Entry<Key, Value>): PutResponse.NodeFull<Key, Value> {
         this.entries.forEach { assert(it != null) }
         val sorted = arrayOf(additionalEntry, *entries).apply { sort() } //as Array<KeyValue<K, V>>
 
@@ -116,31 +97,78 @@ class Node<Key : Comparable<Key>, Value> {
             entries[it] = null
         }
 
-//        entries[0] = middle
-//        children[0] = left
-//        children[1] = right
-
         return PutResponse.NodeFull(middle!!, left, right)
     }
 
-    private fun putInLeafWithEmptySpace(newEntry: Entry<Key, Value>): PutResponse<Key, Value> {
-        entries.forEachIndexed { index, keyValue ->
-            keyValue?.let { existing ->
-                if (existing.key == newEntry.key) {
-                    entries[index] = newEntry
-                    return PutResponse.Success
-                }
-                if (existing.key > newEntry.key) {
-                    (entries.size - 1 downTo index + 1).forEach {
-                        if (entries[it - 1] == null) return@forEach
-                        entries[it] = entries[it - 1]
-                    }
-                    entries[index] = newEntry
-                    return PutResponse.Success
-                }
-            } ?: let {
+    fun insertPromoted(putResponse: PutResponse.NodeFull<Key, Value>): PutResponse<Key, Value> {
+        val isFull = entries.indexOfFirst { it == null } == -1
+
+        if(isFull) {
+            // this node is also full, propagate up to parent
+            TODO("todo, not enough room in this node")
+        }
+
+        assert(!isFull)
+
+        val indexOfWhereToGo = entries.indexOfFirst {
+            it == null || it.key > putResponse.promoted.key
+        }
+
+        return when(indexOfWhereToGo) {
+            -1 -> {
+                // not found so put it at the end
+                entries[entries.lastIndex] = putResponse.promoted
+                children[entries.lastIndex] = putResponse.left
+                children[entries.lastIndex + 1] = putResponse.right
+                PutResponse.Success
+            }
+            else -> putInNodeWithEmptySpace(putResponse.promoted, putResponse.left, putResponse.right)
+        }
+    }
+
+    private fun putInNodeWithEmptySpace(
+        newEntry: Entry<Key, Value>,
+        left: Node<Key, Value>?,
+        right: Node<Key, Value>?
+    ): PutResponse<Key, Value> {
+
+        val index = getIndexOfSpotForPut(newEntry)
+        val existingEntry = entries[index]
+        return when {
+            existingEntry == null -> {
                 entries[index] = newEntry
-                return PutResponse.Success
+                children[index] = left
+                children[index + 1] = right
+                PutResponse.Success
+            }
+            existingEntry.key == newEntry.key -> {
+                entries[index] = newEntry
+                children[index] = left
+                children[index + 1] = right
+                PutResponse.Success
+            }
+            existingEntry.key > newEntry.key -> {
+                (entries.size - 1 downTo index + 1).forEach {
+                    if (entries[it - 1] == null) return@forEach
+                    entries[it] = entries[it - 1]
+                    children[it + 1] = children[it]
+                }
+                entries[index] = newEntry
+                children[index] = left
+                children[index + 1] = right
+                PutResponse.Success
+            }
+            else -> throw IllegalStateException("should never get here")
+        }
+    }
+
+    fun getIndexOfSpotForPut(newEntry: Entry<Key, Value>): Int {
+        assert(entries.last() == null)
+        entries.forEachIndexed { index, keyValue ->
+            when {
+                keyValue == null -> return index
+                keyValue.key == newEntry.key -> return index
+                keyValue.key > newEntry.key -> return index
             }
         }
 
@@ -173,7 +201,6 @@ class Node<Key : Comparable<Key>, Value> {
             val left: Node<Key, Value>,
             val right: Node<Key, Value>
         ) : PutResponse<Key, Value>()
-//        object Promote: PutResponse()
     }
 
     sealed class LocationOfValue {
