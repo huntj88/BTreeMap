@@ -118,25 +118,37 @@ class Node<Key : Comparable<Key>, Value> {
 
             return when(isFull()) {
                 true -> {
-                    val newLeftNode = Node<Key, Value>().also {
-                        it.entries[0] = entries[0]
-                        it.children[0] = children[0]
-                        it.children[1] = putResponse.left
+                    when {
+                        putResponse.promoted < entries[0]!! -> {
+                            TODO("left")
+                        }
+                        putResponse.promoted > entries[0]!! && putResponse.promoted < entries[1]!! -> {
+//                            TODO("center")
+                            val newLeftNode = Node<Key, Value>().also {
+                                it.entries[0] = entries[0]
+                                it.children[0] = children[0]
+                                it.children[1] = putResponse.left
+                            }
+
+                            val newRightNode = Node<Key, Value>().also {
+                                it.entries[0] = entries[1]
+                                it.children[0] = putResponse.right
+                                it.children[1] = children[2]
+                            }
+
+                            entries[0] = putResponse.promoted
+                            entries[1] = null
+                            children[0] = newLeftNode
+                            children[1] = newRightNode
+                            children[2] = null
+
+                            PutResponse.Success
+                        }
+                        putResponse.promoted > entries[1]!! -> {
+                            TODO("right")
+                        }
+                        else -> throw IllegalStateException("should not happen")
                     }
-
-                    val newRightNode = Node<Key, Value>().also {
-                        it.entries[0] = entries[1]
-                        it.children[0] = putResponse.right
-                        it.children[1] = children[2]
-                    }
-
-                    entries[0] = putResponse.promoted
-                    entries[1] = null
-                    children[0] = newLeftNode
-                    children[1] = newRightNode
-                    children[2] = null
-
-                    PutResponse.Success
                 }
                 false -> putInNodeWithEmptySpace(putResponse.promoted, putResponse.left, putResponse.right)
             }

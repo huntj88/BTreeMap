@@ -22,6 +22,11 @@ class BTreeMapTest {
             println(this)
             println()
 
+            put(100, 9)
+            put(90, 9)
+//            put(29, 9)
+//            put(79, 9)
+
             println(get(1))
             println(get(2))
             println(get(3))
@@ -36,6 +41,20 @@ class BTreeMapTest {
     }
 
     @Test
-    fun put() {
+    fun testFirstNode() {
+        BTreeMap<Int, Int>().apply {
+            put(2, 2)
+            put(8, 8)
+            put(6, 6)
+            put(1, 1)
+            put(5, 5)
+            put(4, 4)
+            put(9, 9)
+            println(this)
+            println()
+            put(3,3)
+//            put(-1,3)
+            println(this)
+        }
     }
 }
