@@ -2,7 +2,7 @@ import BTreeMap.Entry
 
 class BTreeMap<Key : Comparable<Key>, Value> {
 
-    private val rootNode = Node<Key, Value>()
+    private val rootNode = Node<Key, Value>(isRootNode = true)
 
     fun get(key: Key): Value? {
         return rootNode.get(key)
@@ -37,7 +37,7 @@ class BTreeMap<Key : Comparable<Key>, Value> {
 const val numEntriesInNode = 2
 const val numChildren = numEntriesInNode + 1
 
-class Node<Key : Comparable<Key>, Value> {
+class Node<Key : Comparable<Key>, Value>(val isRootNode: Boolean = false) {
     val entries: Array<Entry<Key, Value>?> = Array(numEntriesInNode) { null }
     val children: Array<Node<Key, Value>?> = Array(numChildren) { null }
 
@@ -111,19 +111,40 @@ class Node<Key : Comparable<Key>, Value> {
                     putResponse.right.entries
 
             entries.forEachIndexed { index, entry ->
-                if(entry!! in valuesToRemove) {
+                if (entry!! in valuesToRemove) {
                     entries[index] = null
                 }
             }
 
-            return when(isFull()) {
+            return when (isFull()) {
                 true -> {
                     when {
+                        isRootNode && putResponse.promoted < entries[0]!! -> {
+                            // root left
+                            val oldRightSide = Node<Key, Value>().also {
+                                it.entries[0] = entries[1]
+                                it.children[0] = children[1]
+                                it.children[1] = children[2]
+                            }
+
+                            val newLeftSide = Node<Key, Value>().also {
+                                it.entries[0] = putResponse.promoted
+                                it.children[0] = putResponse.left
+                                it.children[1] = putResponse.right
+                            }
+
+                            entries[1] = null
+                            children[0] = newLeftSide
+                            children[1] = oldRightSide
+                            children[2] = null
+
+                            PutResponse.Success
+                        }
                         putResponse.promoted < entries[0]!! -> {
                             TODO("left")
                         }
-                        putResponse.promoted > entries[0]!! && putResponse.promoted < entries[1]!! -> {
-//                            TODO("center")
+                        isRootNode && putResponse.promoted > entries[0]!! && putResponse.promoted < entries[1]!! -> {
+                            // root center
                             val newLeftNode = Node<Key, Value>().also {
                                 it.entries[0] = entries[0]
                                 it.children[0] = children[0]
@@ -144,6 +165,12 @@ class Node<Key : Comparable<Key>, Value> {
 
                             PutResponse.Success
                         }
+                        putResponse.promoted > entries[0]!! && putResponse.promoted < entries[1]!! -> {
+                            TODO("center")
+                        }
+                        isRootNode && putResponse.promoted > entries[1]!! -> {
+                            TODO("right root")
+                        }
                         putResponse.promoted > entries[1]!! -> {
                             TODO("right")
                         }
@@ -158,6 +185,7 @@ class Node<Key : Comparable<Key>, Value> {
 
         assert(!isFull())
 
+        // TODO: unnecessary?
         val indexOfWhereToGo = entries.indexOfFirst {
             it == null || it.key > putResponse.promoted.key
         }
