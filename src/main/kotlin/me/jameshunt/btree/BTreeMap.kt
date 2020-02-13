@@ -1,8 +1,8 @@
-package two
+package me.jameshunt.btree
 
-import two.BTreeMapTwo.Entry
+import me.jameshunt.btree.BTreeMap.Entry
 
-class BTreeMapTwo<Key : Comparable<Key>, Value> {
+class BTreeMap<Key : Comparable<Key>, Value> {
 
     private val rootNode = Node<Key, Value>()
 
@@ -129,7 +129,11 @@ class Node<Key : Comparable<Key>, Value> {
                             it.children[1] = putResponse.right
                         }
 
-                        PutResponse.NodeFull(entries[0]!!, newLeftSide, oldRightSide)
+                        PutResponse.NodeFull(
+                            promoted = entries[0]!!,
+                            left = newLeftSide,
+                            right = oldRightSide
+                        )
                     }
                     putResponse.promoted > entries[0]!! && putResponse.promoted < entries[1]!! -> {
                         val leftNode = Node<Key, Value>().also {
@@ -143,7 +147,11 @@ class Node<Key : Comparable<Key>, Value> {
                             it.children[0] = putResponse.right
                             it.children[1] = children[2]
                         }
-                        PutResponse.NodeFull(putResponse.promoted, leftNode, rightNode)
+                        PutResponse.NodeFull(
+                            promoted = putResponse.promoted,
+                            left = leftNode,
+                            right = rightNode
+                        )
 //                        TODO("center")
                     }
                     putResponse.promoted > entries[1]!! -> {
@@ -159,7 +167,11 @@ class Node<Key : Comparable<Key>, Value> {
                             it.children[1] = putResponse.right
                         }
 
-                        PutResponse.NodeFull(entries[1]!!, oldLeftSide, newRightSide)
+                        PutResponse.NodeFull(
+                            promoted = entries[1]!!,
+                            left = oldLeftSide,
+                            right = newRightSide
+                        )
                     }
                     else -> throw IllegalStateException("should not happen")
                 }

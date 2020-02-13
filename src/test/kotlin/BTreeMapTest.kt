@@ -1,12 +1,12 @@
 import org.junit.Test
-import two.BTreeMapTwo
+import me.jameshunt.btree.BTreeMap
 import kotlin.random.Random
 
 class BTreeMapTest {
 
     @Test
     fun get() {
-        BTreeMapTwo<Int, Int>().apply {
+        BTreeMap<Int, Int>().apply {
             put(2, 2)
             put(8, 8)
             put(6, 6)
@@ -56,7 +56,7 @@ class BTreeMapTest {
     fun testABunch() {
         val range = (0..9999).toList()
 
-        BTreeMapTwo<Int, Int>().apply {
+        BTreeMap<Int, Int>().apply {
             range.sortedBy { Random.nextDouble() }.forEach {
                 put(it, it)
             }
