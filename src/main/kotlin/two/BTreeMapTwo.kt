@@ -1,8 +1,10 @@
-import BTreeMap.Entry
+package two
 
-class BTreeMap<Key : Comparable<Key>, Value> {
+import two.BTreeMapTwo.Entry
 
-    private val rootNode = Node<Key, Value>(isRootNode = true)
+class BTreeMapTwo<Key : Comparable<Key>, Value> {
+
+    private val rootNode = Node<Key, Value>()
 
     fun get(key: Key): Value? {
         return rootNode.get(key)
@@ -15,9 +17,37 @@ class BTreeMap<Key : Comparable<Key>, Value> {
 
             }
             is Node.PutResponse.NodeFull<Key, Value> -> {
-                rootNode.insertPromoted(putResponse)
+                rootNode.createNewTopLevel(putResponse)
             }
         }
+    }
+
+    private fun Node<Key, Value>.createNewTopLevel(putResponse: Node.PutResponse.NodeFull<Key, Value>) {
+//        val newLeftNode = Node<Key, Value>().also {
+//            it.entries[0] = entries[0]
+//
+//            if(hasChildren()) {
+//                TODO()
+////                it.children[0] = children[0]
+////                it.children[1] = putResponse.left
+//            }
+//        }
+//
+//        val newRightNode = Node<Key, Value>().also {
+//            it.entries[0] = entries[1]
+//
+//            if(hasChildren()) {
+//                TODO()
+////                it.children[0] = putResponse.right
+////                it.children[1] = children[2]
+//            }
+//        }
+
+        entries[0] = putResponse.promoted
+        entries[1] = null
+        children[0] = putResponse.left
+        children[1] = putResponse.right
+        children[2] = null
     }
 
     data class Entry<Key : Comparable<Key>, Value>(
@@ -37,7 +67,7 @@ class BTreeMap<Key : Comparable<Key>, Value> {
 const val numEntriesInNode = 2
 const val numChildren = numEntriesInNode + 1
 
-class Node<Key : Comparable<Key>, Value>(val isRootNode: Boolean = false) {
+class Node<Key : Comparable<Key>, Value> {
     val entries: Array<Entry<Key, Value>?> = Array(numEntriesInNode) { null }
     val children: Array<Node<Key, Value>?> = Array(numChildren) { null }
 
@@ -79,7 +109,7 @@ class Node<Key : Comparable<Key>, Value>(val isRootNode: Boolean = false) {
         }
     }
 
-    fun splitAndPromoteLeaf(additionalEntry: Entry<Key, Value>): PutResponse.NodeFull<Key, Value> {
+    private fun splitAndPromoteLeaf(additionalEntry: Entry<Key, Value>): PutResponse.NodeFull<Key, Value> {
         this.entries.forEach { assert(it != null) }
         val sorted = arrayOf(additionalEntry, *entries).apply { sort() } //as Array<KeyValue<K, V>>
 
@@ -100,108 +130,49 @@ class Node<Key : Comparable<Key>, Value>(val isRootNode: Boolean = false) {
         return PutResponse.NodeFull(middle!!, left, right)
     }
 
-    fun insertPromoted(putResponse: PutResponse.NodeFull<Key, Value>): PutResponse<Key, Value> {
+    private fun insertPromoted(putResponse: PutResponse.NodeFull<Key, Value>): PutResponse<Key, Value> {
         fun isFull() = (entries.indexOfFirst { it == null } == -1)
 
-        if (isFull()) {
-            // this node is also full, propagate up to parent
+        return when (isFull()) {
+            true -> {
+                when {
+                    putResponse.promoted < entries[0]!! -> {
+                        val oldRightSide = Node<Key, Value>().also {
+                            it.entries[0] = entries[1]
+                            it.children[0] = children[1]
+                            it.children[1] = children[2]
+                        }
 
-            if(isRootNode) {
-                val valuesToRemove = arrayOf(putResponse.promoted as Entry<Key, Value>?) +
-                        putResponse.left.entries +
-                        putResponse.right.entries
+                        val newLeftSide = Node<Key, Value>().also {
+                            it.entries[0] = putResponse.promoted
+                            it.children[0] = putResponse.left
+                            it.children[1] = putResponse.right
+                        }
 
-                entries.forEachIndexed { index, entry ->
-                    if (entry!! in valuesToRemove) {
-                        entries[index] = null
+                        PutResponse.NodeFull(entries[0]!!, newLeftSide, oldRightSide)
                     }
+                    putResponse.promoted > entries[0]!! && putResponse.promoted < entries[1]!! -> {
+                        val leftNode = Node<Key, Value>().also {
+                            it.entries[0] = entries[0]
+                            it.children[0] = children[0]
+                            it.children[1] = putResponse.left
+                        }
+
+                        val rightNode = Node<Key, Value>().also {
+                            it.entries[0] = entries[1]
+                            it.children[0] = putResponse.right
+                            it.children[1] = children[2]
+                        }
+                        PutResponse.NodeFull(putResponse.promoted, leftNode, rightNode)
+//                        TODO("center")
+                    }
+                    putResponse.promoted > entries[1]!! -> {
+                        TODO("right")
+                    }
+                    else -> throw IllegalStateException("should not happen")
                 }
             }
-
-            return when (isFull()) {
-                true -> {
-                    when {
-                        isRootNode && putResponse.promoted < entries[0]!! -> {
-                            // root left
-                            val oldRightSide = Node<Key, Value>().also {
-                                it.entries[0] = entries[1]
-                                it.children[0] = children[1]
-                                it.children[1] = children[2]
-                            }
-
-                            val newLeftSide = Node<Key, Value>().also {
-                                it.entries[0] = putResponse.promoted
-                                it.children[0] = putResponse.left
-                                it.children[1] = putResponse.right
-                            }
-
-                            entries[1] = null
-                            children[0] = newLeftSide
-                            children[1] = oldRightSide
-                            children[2] = null
-
-                            PutResponse.Success
-                        }
-                        putResponse.promoted < entries[0]!! -> {
-                            TODO("left")
-                        }
-                        isRootNode && putResponse.promoted > entries[0]!! && putResponse.promoted < entries[1]!! -> {
-                            // root center
-                            val newLeftNode = Node<Key, Value>().also {
-                                it.entries[0] = entries[0]
-                                it.children[0] = children[0]
-                                it.children[1] = putResponse.left
-                            }
-
-                            val newRightNode = Node<Key, Value>().also {
-                                it.entries[0] = entries[1]
-                                it.children[0] = putResponse.right
-                                it.children[1] = children[2]
-                            }
-
-                            entries[0] = putResponse.promoted
-                            entries[1] = null
-                            children[0] = newLeftNode
-                            children[1] = newRightNode
-                            children[2] = null
-
-                            PutResponse.Success
-                        }
-                        putResponse.promoted > entries[0]!! && putResponse.promoted < entries[1]!! -> {
-                            TODO("center")
-                        }
-                        isRootNode && putResponse.promoted > entries[1]!! -> {
-                            TODO("right root")
-                        }
-                        putResponse.promoted > entries[1]!! -> {
-                            TODO("right")
-                        }
-                        else -> throw IllegalStateException("should not happen")
-                    }
-                }
-                false -> putInNodeWithEmptySpace(putResponse.promoted, putResponse.left, putResponse.right)
-            }
-
-//            TODO("todo, not enough room in this node")
-        }
-
-        assert(!isFull())
-
-        // TODO: unnecessary?
-        val indexOfWhereToGo = entries.indexOfFirst {
-            it == null || it.key > putResponse.promoted.key
-        }
-
-        return when (indexOfWhereToGo) {
-            -1 -> {
-                // not found so put it at the end
-                entries[entries.lastIndex] = putResponse.promoted
-                children[entries.lastIndex] = putResponse.left
-                children[entries.lastIndex + 1] = putResponse.right
-                PutResponse.Success
-                TODO("just want to review what state looks like here")
-            }
-            else -> putInNodeWithEmptySpace(putResponse.promoted, putResponse.left, putResponse.right)
+            false -> putInNodeWithEmptySpace(putResponse.promoted, putResponse.left, putResponse.right)
         }
     }
 
@@ -254,7 +225,7 @@ class Node<Key : Comparable<Key>, Value>(val isRootNode: Boolean = false) {
         }
     }
 
-    private fun hasChildren(): Boolean {
+    fun hasChildren(): Boolean {
         this.children.forEach {
             if (it != null) return true
         }

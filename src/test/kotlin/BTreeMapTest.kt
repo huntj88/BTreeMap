@@ -1,10 +1,11 @@
 import org.junit.Test
+import two.BTreeMapTwo
 
 class BTreeMapTest {
 
     @Test
     fun get() {
-        BTreeMap<Int, Int>().apply {
+        BTreeMapTwo<Int, Int>().apply {
             put(2, 2)
             put(8, 8)
             put(6, 6)
@@ -19,6 +20,14 @@ class BTreeMapTest {
             println(this)
             println()
             put(7, 7)
+            put(0, 7)
+            put(-1, 7)
+            put(-2, 7)
+            put(-3, 7)
+            put(-4, 7)
+            put(-5, 7)
+            put(-6, 7)
+            put(-7, 7)
             println(this)
             println()
 
