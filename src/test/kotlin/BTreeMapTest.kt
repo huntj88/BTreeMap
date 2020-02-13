@@ -1,5 +1,6 @@
 import org.junit.Test
 import two.BTreeMapTwo
+import kotlin.random.Random
 
 class BTreeMapTest {
 
@@ -46,62 +47,25 @@ class BTreeMapTest {
             println(get(8))
             println(get(9))
             println(get(10))
-        }
-    }
 
-    @Test
-    fun test1() {
-        BTreeMap<Int, Int>().apply {
-            put(2, 2)
-            put(8, 8)
-            put(6, 6)
-            put(1, 1)
-            put(5, 5)
-            put(4, 4)
-            put(9, 9)
-            println(this)
-            println()
-            put(3,3)
-//            put(-1,3)
             println(this)
         }
     }
 
     @Test
-    fun test2() {
-        BTreeMap<Int, Int>().apply {
-            put(2, 2)
-            put(8, 8)
-            put(6, 6)
-            put(1, 1)
-            put(5, 5)
-            put(4, 4)
-            put(9, 9)
-            println(this)
-            println()
-            put(0,0)
-            put(-1,-1)
-            put(-2,-1)
-            put(-3,-1)
-            put(-4,-1)
-//            put(-5,-1)
-            println(this)
-        }
-    }
+    fun testABunch() {
+        val range = (0..9999).toList()
 
-    @Test
-    fun test3() {
-        BTreeMap<Int, Int>().apply {
-            put(2, 2)
-            put(8, 8)
-            put(6, 6)
-            put(1, 1)
-            put(5, 5)
-            put(4, 4)
-            put(9, 9)
-            println(this)
-            println()
-            put(10,10)
+        BTreeMapTwo<Int, Int>().apply {
+            range.sortedBy { Random.nextDouble() }.forEach {
+                put(it, it)
+            }
+
+            range.forEach {
+                val value = get(it) ?: throw IllegalStateException()
+                println(value)
+            }
+
             println(this)
         }
     }

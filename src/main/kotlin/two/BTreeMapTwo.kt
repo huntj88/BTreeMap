@@ -23,26 +23,6 @@ class BTreeMapTwo<Key : Comparable<Key>, Value> {
     }
 
     private fun Node<Key, Value>.createNewTopLevel(putResponse: Node.PutResponse.NodeFull<Key, Value>) {
-//        val newLeftNode = Node<Key, Value>().also {
-//            it.entries[0] = entries[0]
-//
-//            if(hasChildren()) {
-//                TODO()
-////                it.children[0] = children[0]
-////                it.children[1] = putResponse.left
-//            }
-//        }
-//
-//        val newRightNode = Node<Key, Value>().also {
-//            it.entries[0] = entries[1]
-//
-//            if(hasChildren()) {
-//                TODO()
-////                it.children[0] = putResponse.right
-////                it.children[1] = children[2]
-//            }
-//        }
-
         entries[0] = putResponse.promoted
         entries[1] = null
         children[0] = putResponse.left
@@ -167,7 +147,19 @@ class Node<Key : Comparable<Key>, Value> {
 //                        TODO("center")
                     }
                     putResponse.promoted > entries[1]!! -> {
-                        TODO("right")
+                        val oldLeftSide = Node<Key, Value>().also {
+                            it.entries[0] = entries[0]
+                            it.children[0] = children[0]
+                            it.children[1] = children[1]
+                        }
+
+                        val newRightSide = Node<Key, Value>().also {
+                            it.entries[0] = putResponse.promoted
+                            it.children[0] = putResponse.left
+                            it.children[1] = putResponse.right
+                        }
+
+                        PutResponse.NodeFull(entries[1]!!, oldLeftSide, newRightSide)
                     }
                     else -> throw IllegalStateException("should not happen")
                 }
@@ -225,7 +217,7 @@ class Node<Key : Comparable<Key>, Value> {
         }
     }
 
-    fun hasChildren(): Boolean {
+    private fun hasChildren(): Boolean {
         this.children.forEach {
             if (it != null) return true
         }
