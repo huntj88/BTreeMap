@@ -45,7 +45,7 @@ class BTreeMap<Key : Comparable<Key>, Value> {
     }
 }
 
-const val numEntriesInNode = 6
+const val numEntriesInNode = 4
 const val numChildren = numEntriesInNode + 1
 
 class Node<Key : Comparable<Key>, Value> {
@@ -118,20 +118,30 @@ class Node<Key : Comparable<Key>, Value> {
             true -> {
                 when {
                     putResponse.promoted < entries[0]!! -> {
-                        val oldRightSide = Node<Key, Value>().also {
-                            it.entries[0] = entries[1]
-                            it.children[0] = children[1]
-                            it.children[1] = children[2]
+                        val oldRightSide = Node<Key, Value>().also { node ->
+                            (numEntriesInNode / 2 until numEntriesInNode).forEachIndexed { index, oldPosition ->
+                                node.entries[index] = entries[oldPosition]
+                                node.children[index] = children[oldPosition]
+                            }
+                            node.children[numEntriesInNode / 2] = children[numEntriesInNode]
                         }
 
-                        val newLeftSide = Node<Key, Value>().also {
-                            it.entries[0] = putResponse.promoted
-                            it.children[0] = putResponse.left
-                            it.children[1] = putResponse.right
+                        val newLeftSide = Node<Key, Value>().also { node ->
+                            node.entries[0] = putResponse.promoted
+                            (1 until numEntriesInNode / 2).forEach { i ->
+                                node.entries[i] = entries[i - 1]
+                            }
+
+                            node.children[0] = putResponse.left
+                            node.children[1] = putResponse.right
+
+                            (1..numEntriesInNode / 2).forEach {
+                                node.children[it + 1] = children[it]
+                            }
                         }
 
                         PutResponse.NodeFull(
-                            promoted = entries[0]!!,
+                            promoted = entries[numEntriesInNode / 2 - 1]!!,
                             left = newLeftSide,
                             right = oldRightSide
                         )
@@ -184,7 +194,7 @@ class Node<Key : Comparable<Key>, Value> {
                             }
                             val indexOfRight = numEntriesInNode - (numEntriesInNode / 2)
                             val grabFromIndex = it.children.size / 2 + 1
-                            (0 .. indexOfRight - 2).forEach { index ->
+                            (0..indexOfRight - 2).forEach { index ->
                                 it.children[index] = children[grabFromIndex + index]
                             }
                             it.children[indexOfRight - 1] = putResponse.left
