@@ -24,10 +24,11 @@ class BTreeMap<Key : Comparable<Key>, Value> {
 
     private fun Node<Key, Value>.createNewTopLevel(putResponse: Node.PutResponse.NodeFull<Key, Value>) {
         entries[0] = putResponse.promoted
-        entries[1] = null
+        (1..entries.lastIndex).forEach { entries[it] = null }
+
         children[0] = putResponse.left
         children[1] = putResponse.right
-        children[2] = null
+        (2..children.lastIndex).forEach { children[it] = null }
     }
 
     data class Entry<Key : Comparable<Key>, Value>(
@@ -44,7 +45,7 @@ class BTreeMap<Key : Comparable<Key>, Value> {
     }
 }
 
-const val numEntriesInNode = 2
+const val numEntriesInNode = 6
 const val numChildren = numEntriesInNode + 1
 
 class Node<Key : Comparable<Key>, Value> {
@@ -154,21 +155,44 @@ class Node<Key : Comparable<Key>, Value> {
                         )
 //                        TODO("center")
                     }
-                    putResponse.promoted > entries[1]!! -> {
+//                    putResponse.promoted > entries[1]!! && putResponse.promoted < entries[2]!! -> {
+//                        TODO("center 1")
+//                    }
+//                    putResponse.promoted > entries[2]!! && putResponse.promoted < entries[3]!! -> {
+//                        TODO("center 2")
+//                    }
+                    putResponse.promoted > entries[entries.lastIndex]!! -> {
+
+                        this.entries.forEach { assert(it != null) }
+                        // todo: sorts can be optimized away
+                        val sorted = arrayOf(putResponse.promoted, *entries).apply { sort() } //as Array<KeyValue<K, V>>
+
+                        val middle = sorted[sorted.size / 2]
+
                         val oldLeftSide = Node<Key, Value>().also {
-                            it.entries[0] = entries[0]
-                            it.children[0] = children[0]
-                            it.children[1] = children[1]
+                            (0 until sorted.size / 2).forEach { index ->
+                                it.entries[index] = sorted[index]
+                                it.children[index] = children[index]
+                            }
+                            it.children[sorted.size / 2] = children[sorted.size / 2]
                         }
 
                         val newRightSide = Node<Key, Value>().also {
-                            it.entries[0] = putResponse.promoted
-                            it.children[0] = putResponse.left
-                            it.children[1] = putResponse.right
+                            val offset = (numEntriesInNode / 2) + 1
+                            (offset until sorted.size).forEach { index ->
+                                it.entries[index - offset] = sorted[index]
+                            }
+                            val indexOfRight = numEntriesInNode - (numEntriesInNode / 2)
+                            val grabFromIndex = it.children.size / 2 + 1
+                            (0 .. indexOfRight - 2).forEach { index ->
+                                it.children[index] = children[grabFromIndex + index]
+                            }
+                            it.children[indexOfRight - 1] = putResponse.left
+                            it.children[indexOfRight] = putResponse.right
                         }
 
                         PutResponse.NodeFull(
-                            promoted = entries[1]!!,
+                            promoted = middle!!,
                             left = oldLeftSide,
                             right = newRightSide
                         )

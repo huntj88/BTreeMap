@@ -1,5 +1,5 @@
-import org.junit.Test
 import me.jameshunt.btree.BTreeMap
+import org.junit.Test
 import kotlin.random.Random
 
 class BTreeMapTest {
@@ -54,12 +54,15 @@ class BTreeMapTest {
 
     @Test
     fun testABunch() {
-        val range = (0..9999).toList()
-
+        val range = (1..60).toList()
+        val random = Random(1)
         BTreeMap<Int, Int>().apply {
-            range.sortedBy { Random.nextDouble() }.forEach {
-                put(it, it)
-            }
+            range
+//                .sortedBy { random.nextDouble() }
+                .forEach {
+                    println("putting: $it")
+                    put(it, it)
+                }
 
             range.forEach {
                 val value = get(it) ?: throw IllegalStateException()
