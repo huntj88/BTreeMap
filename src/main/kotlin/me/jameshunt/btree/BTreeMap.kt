@@ -12,13 +12,10 @@ class BTreeMap<Key : Comparable<Key>, Value> {
 
     fun put(key: Key, value: Value) {
         val entry = Entry(key, value)
-        when (val putResponse = rootNode.put(entry)) {
-            is Node.PutResponse.Success -> {
 
-            }
-            is Node.PutResponse.NodeFull<Key, Value> -> {
-                rootNode.createNewTopLevel(putResponse)
-            }
+        val putResponse = rootNode.put(entry)
+        if(putResponse is Node.PutResponse.NodeFull<Key, Value>) {
+            rootNode.createNewTopLevel(putResponse)
         }
     }
 
@@ -45,7 +42,7 @@ class BTreeMap<Key : Comparable<Key>, Value> {
     }
 }
 
-const val numEntriesInNode = 6
+const val numEntriesInNode = 200
 const val numChildren = numEntriesInNode + 1
 
 class Node<Key : Comparable<Key>, Value> {
@@ -64,14 +61,12 @@ class Node<Key : Comparable<Key>, Value> {
 
         return when {
             !hasChildren && entries.last() == null -> putInNodeWithEmptySpace(entry, null, null)
-            !hasChildren && entries.last() != null -> {
-                splitAndPromoteLeaf(entry)
-            }
+            !hasChildren && entries.last() != null -> splitAndPromoteLeaf(entry)
             hasChildren -> {
                 when (val location = getLocationOfValue(entry.key)) {
                     is LocationOfValue.Value -> {
                         entries[location.index] = entry
-                        TODO()
+                        PutResponse.Success
                     }
                     is LocationOfValue.Child -> {
                         val childNode = children[location.index]!!
@@ -84,9 +79,7 @@ class Node<Key : Comparable<Key>, Value> {
                     }
                 }
             }
-            else -> {
-                TODO()
-            }
+            else -> throw IllegalStateException("Should be no unhandled cases")
         }
     }
 
