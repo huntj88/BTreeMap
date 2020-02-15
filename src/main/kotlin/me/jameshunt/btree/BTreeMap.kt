@@ -2,9 +2,13 @@ package me.jameshunt.btree
 
 import me.jameshunt.btree.BTreeMap.Entry
 
-class BTreeMap<Key : Comparable<Key>, Value> {
+class BTreeMap<Key : Comparable<Key>, Value>(numEntriesInNode: Int = 12) {
 
-    private val rootNode = Node<Key, Value>()
+    init {
+        assert(numEntriesInNode % 2 == 0) { "Even numbers for numEntriesInNode only" }
+    }
+
+    private val rootNode = Node<Key, Value>(numEntriesInNode)
 
     fun get(key: Key): Value? {
         return rootNode.get(key)
@@ -42,12 +46,9 @@ class BTreeMap<Key : Comparable<Key>, Value> {
     }
 }
 
-const val numEntriesInNode = 200
-const val numChildren = numEntriesInNode + 1
-
-class Node<Key : Comparable<Key>, Value> {
+class Node<Key : Comparable<Key>, Value>(private val numEntriesInNode: Int) {
     val entries: Array<Entry<Key, Value>?> = Array(numEntriesInNode) { null }
-    val children: Array<Node<Key, Value>?> = Array(numChildren) { null }
+    val children: Array<Node<Key, Value>?> = Array(numEntriesInNode + 1) { null }
 
     fun get(key: Key): Value? {
         return when (val location = getLocationOfValue(key)) {
@@ -87,13 +88,13 @@ class Node<Key : Comparable<Key>, Value> {
         val sorted = arrayOf(additionalEntry, *entries).apply { sort() } //as Array<KeyValue<K, V>>
 
         val middle = sorted[sorted.size / 2]
-        val left = Node<Key, Value>().also { node ->
+        val left = createNode { node ->
             (0 until sorted.size / 2).forEach {
                 node.entries[it] = sorted[it]
             }
         }
 
-        val right = Node<Key, Value>().also { node ->
+        val right = createNode { node ->
             val offset = (numEntriesInNode / 2) + 1
             (offset until sorted.size).forEach {
                 node.entries[it - offset] = sorted[it]
@@ -111,7 +112,7 @@ class Node<Key : Comparable<Key>, Value> {
                 val halfNumEntry = numEntriesInNode / 2
                 when {
                     putResponse.promoted < entries[0]!! -> {
-                        val oldRightSide = Node<Key, Value>().also { node ->
+                        val oldRightSide = createNode { node ->
                             (halfNumEntry until numEntriesInNode).forEachIndexed { index, oldPosition ->
                                 node.entries[index] = entries[oldPosition]
                                 node.children[index] = children[oldPosition]
@@ -119,7 +120,7 @@ class Node<Key : Comparable<Key>, Value> {
                             node.children[halfNumEntry] = children[numEntriesInNode]
                         }
 
-                        val newLeftSide = Node<Key, Value>().also { node ->
+                        val newLeftSide = createNode { node ->
                             node.entries[0] = putResponse.promoted
                             (1 until halfNumEntry).forEach {
                                 node.entries[it] = entries[it - 1]
@@ -142,7 +143,7 @@ class Node<Key : Comparable<Key>, Value> {
                     putResponse.promoted > entries[0]!! && putResponse.promoted < entries.last()!! -> {
                         val indexOfPromoted = entries.indexOfFirst { it!!.key > putResponse.promoted.key }
 
-                        val leftNode = Node<Key, Value>().also { node ->
+                        val leftNode = createNode { node ->
                             (0 until indexOfPromoted).forEach {
                                 node.entries[it] = entries[it]
                                 node.children[it] = children[it]
@@ -150,7 +151,7 @@ class Node<Key : Comparable<Key>, Value> {
                             node.children[indexOfPromoted] = putResponse.left
                         }
 
-                        val rightNode = Node<Key, Value>().also { node ->
+                        val rightNode = createNode { node ->
                             node.children[0] = putResponse.right
                             (indexOfPromoted until numEntriesInNode).forEachIndexed { index, indexOld ->
                                 node.entries[index] = entries[indexOld]
@@ -163,7 +164,7 @@ class Node<Key : Comparable<Key>, Value> {
                     putResponse.promoted > entries[entries.lastIndex]!! -> {
                         this.entries.forEach { assert(it != null) }
 
-                        val oldLeftSide = Node<Key, Value>().also { node ->
+                        val oldLeftSide = createNode { node ->
                             (0 until halfNumEntry).forEach {
                                 node.entries[it] = entries[it]
                                 node.children[it] = children[it]
@@ -171,7 +172,7 @@ class Node<Key : Comparable<Key>, Value> {
                             node.children[halfNumEntry] = children[halfNumEntry]
                         }
 
-                        val newRightSide = Node<Key, Value>().also { node ->
+                        val newRightSide = createNode { node ->
                             val offset = halfNumEntry + 1
                             (offset until numEntriesInNode).forEach {
                                 node.entries[it - offset] = entries[it]
@@ -281,12 +282,16 @@ class Node<Key : Comparable<Key>, Value> {
         data class Child(val index: Int) : LocationOfValue()
     }
 
+    private fun createNode(config: (Node<Key, Value>) -> Unit): Node<Key, Value> {
+        return Node<Key, Value>(numEntriesInNode).also { config(it) }
+    }
+
     fun toString(indentLevel: Int): String {
         val indent = (0..indentLevel).joinToString { "\t" }
         return (0 until numEntriesInNode).fold("") { acc, next ->
             acc +
                     (children[next]?.toString(indentLevel + 1)?.let { "\n$indent$it" } ?: "") +
                     (entries[next]?.let { "\n$indent$it" } ?: "")
-        } + (children[numEntriesInNode]?.toString(indentLevel + 1) ?: "" )
+        } + (children[numEntriesInNode]?.toString(indentLevel + 1) ?: "")
     }
 }
