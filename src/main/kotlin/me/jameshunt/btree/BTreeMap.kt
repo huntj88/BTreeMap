@@ -45,7 +45,7 @@ class BTreeMap<Key : Comparable<Key>, Value> {
     }
 }
 
-const val numEntriesInNode = 6
+const val numEntriesInNode = 4
 const val numChildren = numEntriesInNode + 1
 
 class Node<Key : Comparable<Key>, Value> {
@@ -147,25 +147,52 @@ class Node<Key : Comparable<Key>, Value> {
                             right = oldRightSide
                         )
                     }
-                    putResponse.promoted > entries[0]!! && putResponse.promoted < entries[1]!! -> {
-                        val leftNode = Node<Key, Value>().also {
-                            it.entries[0] = entries[0]
-                            it.children[0] = children[0]
-                            it.children[1] = putResponse.left
-                        }
+                    putResponse.promoted > entries[0]!! && putResponse.promoted < entries.last()!! -> {
 
-                        val rightNode = Node<Key, Value>().also {
-                            it.entries[0] = entries[1]
-                            it.children[0] = putResponse.right
-                            it.children[1] = children[2]
+//                        val sorted = (entries + putResponse.promoted).apply { sort() }
+//                        val middle = sorted.let { it[it.size / 2] }!!
+                        val indexOfPromoted = entries.indexOfFirst { it!!.key > putResponse.promoted.key }
+
+                        if (indexOfPromoted == numEntriesInNode / 2) {
+                            val leftNode = Node<Key, Value>().also { node ->
+                                (0 until indexOfPromoted).forEach {
+                                    node.entries[it] = entries[it]
+                                    node.children[it] = children[it]
+                                }
+                                node.children[numEntriesInNode / 2] = putResponse.left
+                            }
+
+                            val rightNode = Node<Key, Value>().also { node ->
+                                node.children[0] = putResponse.right
+                                (indexOfPromoted until numEntriesInNode).forEachIndexed { index, indexOld ->
+                                    node.entries[index] = entries[indexOld]
+                                    node.children[index + 1] = children[indexOld + 1]
+                                }
+                            }
+
+                            return PutResponse.NodeFull(putResponse.promoted, leftNode, rightNode)
                         }
-                        PutResponse.NodeFull(
-                            promoted = putResponse.promoted,
-                            left = leftNode,
-                            right = rightNode
-                        )
-//                        TODO("center")
+                        TODO()
                     }
+//                    putResponse.promoted > entries[0]!! && putResponse.promoted < entries[1]!! -> {
+//                        val leftNode = Node<Key, Value>().also {
+//                            it.entries[0] = entries[0]
+//                            it.children[0] = children[0]
+//                            it.children[1] = putResponse.left
+//                        }
+//
+//                        val rightNode = Node<Key, Value>().also {
+//                            it.entries[0] = entries[1]
+//                            it.children[0] = putResponse.right
+//                            it.children[1] = children[2]
+//                        }
+//                        PutResponse.NodeFull(
+//                            promoted = putResponse.promoted,
+//                            left = leftNode,
+//                            right = rightNode
+//                        )
+////                        TODO("center")
+//                    }
 //                    putResponse.promoted > entries[1]!! && putResponse.promoted < entries[2]!! -> {
 //                        TODO("center 1")
 //                    }

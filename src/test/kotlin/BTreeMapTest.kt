@@ -55,14 +55,21 @@ class BTreeMapTest {
     @Test
     fun testABunch() {
 //        val range = (60 downTo 1).toList()
-        val range = (1..6000).toList()
+        val range = (1..40).toList()
         val random = Random(1)
+
         BTreeMap<Int, Int>().apply {
-            range
-//                .sortedBy { random.nextDouble() }
-                .forEach {
-                    println("putting: $it")
-                    put(it, it)
+            val nums = range.sortedBy { random.nextDouble() }
+
+            nums
+                .forEachIndexed { index, i ->
+                    println("putting: $i")
+                    put(i, i)
+                    nums.take(index + 1).forEach {
+                        get(it)
+                            ?: TODO()
+                    }
+
                 }
 
             range.forEach {
