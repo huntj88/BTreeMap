@@ -54,7 +54,7 @@ class BTreeMapTest {
 
     @Test
     fun testABunch() {
-        val range = (1..6000000).toList()
+        val range = (1..60000).toList()
         val random = Random(1)
 
         BTreeMap<Int, Int>().apply {
