@@ -63,8 +63,10 @@ class BTreeMapTest {
             nums.forEach { put(it, it) }
 
             range.forEach {
-                val value = get(it) ?: throw IllegalStateException()
+                get(it) ?: throw IllegalStateException()
             }
+
+            println(this)
         }
     }
 }

@@ -38,7 +38,7 @@ class BTreeMap<Key : Comparable<Key>, Value> {
     }
 
     override fun toString(): String {
-        return rootNode.toString()
+        return rootNode.toString(0)
     }
 }
 
@@ -281,7 +281,12 @@ class Node<Key : Comparable<Key>, Value> {
         data class Child(val index: Int) : LocationOfValue()
     }
 
-    override fun toString(): String {
-        return "\nValues: " + entries.joinToString() + " Children: [" + children.joinToString() + "]"
+    fun toString(indentLevel: Int): String {
+        val indent = (0..indentLevel).joinToString { "\t" }
+        return (0 until numEntriesInNode).fold("") { acc, next ->
+            acc +
+                    (children[next]?.toString(indentLevel + 1)?.let { "\n$indent$it" } ?: "") +
+                    (entries[next]?.let { "\n$indent$it" } ?: "")
+        } + (children[numEntriesInNode]?.toString(indentLevel + 1) ?: "" )
     }
 }
