@@ -257,6 +257,7 @@ class Node<Key : Comparable<Key>, Value>(private val numEntriesInNode: Int) {
     }
 
     private fun getLocationOfValue(key: Key): LocationOfValue {
+        // TODO: can be optimized with a binary search or something since they are already ordered
         entries.forEachIndexed { index, keyValue ->
             when {
                 keyValue == null -> return LocationOfValue.Child(index)

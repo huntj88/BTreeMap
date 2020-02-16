@@ -1,4 +1,5 @@
 import me.jameshunt.btree.BTreeMap
+import org.junit.BeforeClass
 import org.junit.Test
 import kotlin.random.Random
 
@@ -52,9 +53,23 @@ class BTreeMapTest {
         }
     }
 
+
+    companion object {
+        lateinit var bTree: BTreeMap<Int, Unit>
+
+        @BeforeClass
+        @JvmStatic
+        fun setup() {
+            val random = Random(1)
+            bTree = BTreeMap<Int, Unit>(200).apply {
+                (0..10_000_000).sortedBy { random.nextInt() }.forEach { put(it, Unit) }
+            }
+        }
+    }
+
     @Test
-    fun testABunch() {
-        val range = (1..60000).toList()
+    fun getAllTest() {
+        val range = (1..60000)
         val random = Random(1)
 
         BTreeMap<Int, Int>().apply {
@@ -68,5 +83,16 @@ class BTreeMapTest {
 
             println(this)
         }
+    }
+
+
+    @Test
+    fun getSpecificFrom10Million() {
+        bTree.get(4343) ?: throw IllegalStateException()
+        bTree.get(234233) ?: throw IllegalStateException()
+        bTree.get(577432) ?: throw IllegalStateException()
+        bTree.get(4368743) ?: throw IllegalStateException()
+        bTree.get(9368743) ?: throw IllegalStateException()
+        bTree.get(10_000_001)?.let { throw IllegalStateException("should be null") }
     }
 }
